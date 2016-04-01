@@ -66,8 +66,8 @@ public class WixelReader extends AsyncTaskBase {
     }
     public static boolean IsConfigured(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        String recieversIpAddresses = prefs.getString("wifi_recievers_addresses", "");
-        if(recieversIpAddresses == null || recieversIpAddresses.equals("") ) {
+        String receiversIpAddresses = prefs.getString("wifi_receivers_addresses", "");
+        if(receiversIpAddresses == null || receiversIpAddresses.equals("") ) {
             return false;
         }
         return true;
@@ -447,7 +447,7 @@ public class WixelReader extends AsyncTaskBase {
         TransmitterRawData[] LastReadingArr = null;
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String recieversIpAddresses = prefs.getString("wifi_recievers_addresses", "");
+        String receiversIpAddresses = prefs.getString("wifi_receivers_addresses", "");
         
         // How many packets should we read? we look at the maximum time between last calibration and last reading time
         // and calculate how much are needed.
@@ -462,7 +462,7 @@ public class WixelReader extends AsyncTaskBase {
         packetsToRead = Math.max(packetsToRead, 1); 
         
         Log.d(TAG,"reading " + packetsToRead + " packets");
-		LastReadingArr = Read(recieversIpAddresses ,packetsToRead);
+		LastReadingArr = Read(receiversIpAddresses ,packetsToRead);
 		
 		if (LastReadingArr == null || LastReadingArr.length  == 0) {
 		    return;

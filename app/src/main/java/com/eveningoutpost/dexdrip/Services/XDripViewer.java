@@ -171,9 +171,9 @@ public class XDripViewer extends AsyncTaskBase {
     
     public static boolean isxDripViewerConfigured(Context ctx) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        String recieversIpAddresses = prefs.getString("xdrip_viewer_ns_addresses", "");
-        if(recieversIpAddresses == null || recieversIpAddresses.equals("") ||
-                recieversIpAddresses.equals(ctx.getString(R.string.xdrip_viewer_ns_example))) {
+        String receiversIpAddresses = prefs.getString("xdrip_viewer_ns_addresses", "");
+        if(receiversIpAddresses == null || receiversIpAddresses.equals("") ||
+                receiversIpAddresses.equals(ctx.getString(R.string.xdrip_viewer_ns_example))) {
             return false;
         }
         return true;

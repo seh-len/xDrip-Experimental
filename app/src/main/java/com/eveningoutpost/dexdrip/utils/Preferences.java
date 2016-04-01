@@ -279,7 +279,7 @@ public class Preferences extends PreferenceActivity {
             final Preference collectionMethod = findPreference("dex_collection_method");
             final Preference displayBridgeBatt = findPreference("display_bridge_battery");
             final Preference runInForeground = findPreference("run_service_in_foreground");
-            final Preference wifiRecievers = findPreference("wifi_recievers_addresses");
+            final Preference wifiReceivers = findPreference("wifi_receivers_addresses");
             final Preference xDripViewerNsAdresses = findPreference("xdrip_viewer_ns_addresses");
             final Preference predictiveBG = findPreference("predictive_bg");
             final Preference interpretRaw = findPreference("interpret_raw");
@@ -346,11 +346,11 @@ public class Preferences extends PreferenceActivity {
             if ((prefs.getString("dex_collection_method", "BluetoothWixel").compareTo("WifiWixel") != 0)
                     && (prefs.getString("dex_collection_method", "BluetoothWixel").compareTo("WifiBlueToothWixel") != 0)) {
                 String receiversIpAddresses;
-                receiversIpAddresses = prefs.getString("wifi_recievers_addresses", "");
+                receiversIpAddresses = prefs.getString("wifi_receivers_addresses", "");
                 // only hide if non wifi wixel mode and value not previously set to cope with
                 // dynamic mode changes. jamorham
                 if (receiversIpAddresses == null || receiversIpAddresses.equals("")) {
-                    collectionCategory.removePreference(wifiRecievers);
+                    collectionCategory.removePreference(wifiReceivers);
                 }
             }
 
@@ -379,7 +379,7 @@ public class Preferences extends PreferenceActivity {
 
             bindPreferenceSummaryToValue(collectionMethod);
             bindPreferenceSummaryToValue(shareKey);
-            bindPreferenceSummaryToValue(wifiRecievers);
+            bindPreferenceSummaryToValue(wifiReceivers);
             bindPreferenceSummaryToValue(xDripViewerNsAdresses);
             bindPreferenceSummaryToValue(transmitterId);
             transmitterId.getEditText().setFilters(new InputFilter[]{new InputFilter.AllCaps()});
@@ -414,14 +414,14 @@ public class Preferences extends PreferenceActivity {
                     if((((String) newValue).compareTo("WifiWixel") != 0)
                             && (((String) newValue).compareTo("WifiBlueToothWixel") != 0)) {
                         String receiversIpAddresses;
-                        receiversIpAddresses = prefs.getString("wifi_recievers_addresses", "");
+                        receiversIpAddresses = prefs.getString("wifi_receivers_addresses", "");
                         if(receiversIpAddresses == null || receiversIpAddresses.equals("") ) {
-                            collectionCategory.removePreference(wifiRecievers);
+                            collectionCategory.removePreference(wifiReceivers);
                         } else {
-                            collectionCategory.addPreference(wifiRecievers);
+                            collectionCategory.addPreference(wifiReceivers);
                         }
                     } else {
-                        collectionCategory.addPreference(wifiRecievers);
+                        collectionCategory.addPreference(wifiReceivers);
                     }
 
                     if(((String) newValue).compareTo("DexbridgeWixel") != 0) {
@@ -476,7 +476,7 @@ public class Preferences extends PreferenceActivity {
                 collectionCategory.removePreference(collectionMethod);
                 collectionCategory.removePreference(shareKey);
                 collectionCategory.removePreference(scanShare);
-                collectionCategory.removePreference(wifiRecievers);
+                collectionCategory.removePreference(wifiReceivers);
                 collectionCategory.removePreference(transmitterId);
                 collectionCategory.removePreference(displayBridgeBatt);
                 
