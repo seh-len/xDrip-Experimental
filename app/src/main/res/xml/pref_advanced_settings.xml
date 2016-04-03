@@ -4,11 +4,12 @@
     <PreferenceCategory
         android:title="Watch Integration"
         android:key="watch_integration">
-        <CheckBoxPreference
+        <SwitchPreference
             android:key="wear_sync"
             android:title="Android Wear Integration"
             android:summary="Send data to Android Wear Watchface."
-            android:defaultValue="false" />
+            android:defaultValue="false">
+        </SwitchPreference>
         <SwitchPreference
             android:title="Send to Pebble"
             android:key="broadcast_to_pebble"
