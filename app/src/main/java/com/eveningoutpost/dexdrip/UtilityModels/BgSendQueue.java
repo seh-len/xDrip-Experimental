@@ -138,7 +138,10 @@ public class BgSendQueue extends Model {
                 context.startService(new Intent(context, PebbleSync.class));
             }
 
-
+            // send to gear
+            if(prefs.getBoolean("gear_sync", false)) {
+                context.startService(new Intent(context, GearSync.class));
+            }
 
             if (prefs.getBoolean("share_upload", false)) {
                 Log.d("ShareRest", "About to call ShareRest!!");
