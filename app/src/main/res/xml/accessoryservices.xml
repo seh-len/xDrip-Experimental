@@ -32,16 +32,14 @@
             name="xdripaccessory"
             role="provider"
             serviceImpl="com.eveningoutpost.dexdrip.UtilityModels.GearSync"
-            version="1.0"
-            serviceLimit="ANY"
-            serviceTimeout="10">
+            version="1.0">
             <supportedTransports>
                 <transport type="TRANSPORT_BT" />
                 <transport type="TRANSPORT_WIFI" />
             </supportedTransports>
             <serviceChannel
                 id="314"
-                dataRate="low"
+                dataRate="high"
                 priority="low"
                 reliability= "enable"/>
         </serviceProfile>
