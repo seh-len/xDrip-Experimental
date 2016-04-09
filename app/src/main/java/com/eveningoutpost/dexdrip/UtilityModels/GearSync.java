@@ -62,7 +62,7 @@ public class GearSync extends SAAgent {
                     + error);
         }
 
-        public void sendMsgToWatch(String msg) {
+        public void sendMessageToWatch(String msg) {
             Log.d(TAG, "In sendMsgToWatch");
             final String message = msg;
             final GearSyncConnection uHandler = mConnectionsMap.get(Integer.parseInt(String.valueOf(mConnectionId)));
@@ -170,7 +170,10 @@ public class GearSync extends SAAgent {
     public void sendData(){
         mBgReading = BgReading.last();
         if(mBgReading != null) {
-            //sendMsgToWatch("msg");
+            for (GearSyncConnection connection : mConnectionsMap.values()) {
+                //connection.sendMessageToWatch("msg");
+                connection.sendMessageToWatch(bgReading());
+            }
         }
     }
 
