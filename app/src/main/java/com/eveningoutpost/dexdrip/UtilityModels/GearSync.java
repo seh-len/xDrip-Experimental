@@ -128,7 +128,7 @@ public class GearSync extends SAAgent {
 
     private void init() {
         Log.i(TAG, "Initialising...");
-        Log.i(TAG, "configuring PebbleDataReceiver");
+        Log.i(TAG, "configuring GearDataReceiver");
         sendData();
     }
 
@@ -176,10 +176,12 @@ public class GearSync extends SAAgent {
 
     public void sendData(){
         mBgReading = BgReading.last();
-        if(mBgReading != null) {
-            for (GearSyncConnection connection : mConnectionsMap.values()) {
-                //connection.sendMessageToWatch("msg");
-                connection.sendMessageToWatch(bgReading());
+        if (mConnectionsMap != null) {
+            if (mBgReading != null) {
+                for (GearSyncConnection connection : mConnectionsMap.values()) {
+                    //connection.sendMessageToWatch("msg");
+                    connection.sendMessageToWatch(bgReading());
+                }
             }
         }
     }
