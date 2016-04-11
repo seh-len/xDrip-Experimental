@@ -30,7 +30,7 @@
         <serviceProfile
             id="/xdrip/ui"
             name="xdripaccessory"
-            role="provider"
+            role="consumer"
             serviceImpl="com.eveningoutpost.dexdrip.UtilityModels.GearSync"
             version="1.0">
             <supportedTransports>
@@ -39,8 +39,8 @@
             </supportedTransports>
             <serviceChannel
                 id="314"
-                dataRate="high"
-                priority="low"
+                dataRate="low"
+                priority="high"
                 reliability= "enable"/>
         </serviceProfile>
     </application>
