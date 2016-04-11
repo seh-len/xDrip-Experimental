@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+//import android.os.Handler;
 import android.os.Binder;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
@@ -30,17 +31,135 @@ import com.samsung.android.sdk.accessory.SASocket;
  */
 public class GearSync extends SAAgent {
     public static final String TAG = GearSync.class.getSimpleName();
-    public static final int SERVICE_CONNECTION_RESULT_OK = 0;
-    public static final int GEARACCESSORY_CHANNEL_ID = 314;
 
-    HashMap<Integer, GearSyncConnection> mConnectionsMap = null;
-    private final IBinder mBinder = new LocalBinder();
-    private Context mContext;
     private BgGraphBuilder bgGraphBuilder;
     private BgReading mBgReading;
 
+    private static final int GEAR_ACCESSORY_CHANNEL_ID = 314;
+    private static final Class<GearSyncConnection> SASOCKET_CLASS = GearSyncConnection.class;
+    private final IBinder mBinder = new LocalBinder();
+    private Context mContext;
+    private GearSyncConnection mConnectionHandler = null;
+    //Handler mHandler = new Handler();
+
     public GearSync() {
-        super(TAG, GearSyncConnection.class);
+        super(TAG, SASOCKET_CLASS);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        mContext = getApplicationContext();
+        bgGraphBuilder = new BgGraphBuilder(mContext);
+        mBgReading = BgReading.last();
+        SA mAccessory = new SA();
+        try {
+            mAccessory.initialize(this);
+            findPeers();
+        } catch (SsdkUnsupportedException e) {
+            // try to handle SsdkUnsupportedException
+            if (processUnsupportedException(e) == true) {
+                return;
+            }
+        } catch (Exception e1) {
+            e1.printStackTrace();
+            /*
+             * Your application can not use Samsung Accessory SDK. Your application should work smoothly
+             * without using this SDK, or you may want to notify user and close your application gracefully
+             * (release resources, stop Service threads, close UI thread, etc.)
+             */
+            stopSelf();
+        }
+        init();
+    }
+
+
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
+    @Override
+    protected void onFindPeerAgentsResponse(SAPeerAgent[] peerAgents, int result) {
+        if ((result == SAAgent.PEER_AGENT_FOUND) && (peerAgents != null)) {
+            for(SAPeerAgent peerAgent:peerAgents)
+                requestServiceConnection(peerAgent);
+        } else if (result == SAAgent.FINDPEER_DEVICE_NOT_CONNECTED) {
+            Log.e(TAG, "FINDPEER_DEVICE_NOT_CONNECTED");
+        } else if (result == SAAgent.FINDPEER_SERVICE_NOT_FOUND) {
+            Log.e(TAG, "FINDPEER_SERVICE_NOT_FOUND");
+        } else {
+            Log.e(TAG, "NO_PEERS_FOUND");
+        }
+    }
+
+    @Override
+    protected void onServiceConnectionRequested(SAPeerAgent peerAgent) {
+        if (peerAgent != null) {
+            acceptServiceConnectionRequest(peerAgent);
+        }
+    }
+
+    @Override
+    protected void onServiceConnectionResponse(SAPeerAgent peerAgent, SASocket socket, int result) {
+        if (result == SAAgent.CONNECTION_SUCCESS) {
+            Log.i(TAG, "CONNECTION_SUCCESS");
+            this.mConnectionHandler = (GearSyncConnection) socket;
+        } else if (result == SAAgent.CONNECTION_ALREADY_EXIST) {
+            Log.d(TAG, "CONNECTION_ALREADY_EXIST");
+        } else if (result == SAAgent.CONNECTION_DUPLICATE_REQUEST) {
+            Log.e(TAG, "CONNECTION_DUPLICATE_REQUEST");
+        } else {
+            Log.e(TAG, "CONNECTION_FAILURE");
+        }
+    }
+
+    @Override
+    protected void onError(SAPeerAgent peerAgent, String errorMessage, int errorCode) {
+        super.onError(peerAgent, errorMessage, errorCode);
+    }
+
+    @Override
+    protected void onPeerAgentsUpdated(SAPeerAgent[] peerAgents, int result) {
+        final SAPeerAgent[] peers = peerAgents;
+        final int status = result;
+
+        if (peers != null) {
+            if (status == SAAgent.PEER_AGENT_AVAILABLE) {
+                Log.d(TAG, "PEER_AGENT_AVAILABLE");
+            } else {
+                Log.d(TAG, "PEER_AGENT_UNAVAILABLE");
+            }
+        }
+        /*mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+
+            }
+        });*/
+    }
+
+    public class GearSyncConnection extends SASocket {
+        public GearSyncConnection() {
+            super(GearSyncConnection.class.getName());
+        }
+
+        @Override
+        public void onError(int channelId, String errorMessage, int errorCode) {
+        }
+
+        @Override
+        public void onReceive(int channelId, byte[] data) {
+            final String message = new String(data);
+            Log.d(TAG, "Received: " + message);
+        }
+
+        @Override
+        protected void onServiceConnectionLost(int reason) {
+            Log.d(TAG, "DISCONNECTED");
+            closeConnection();
+        }
     }
 
     public class LocalBinder extends Binder {
@@ -49,140 +168,66 @@ public class GearSync extends SAAgent {
         }
     }
 
-    public class GearSyncConnection extends SASocket {
-        private int mConnectionId;
+    public void findPeers() {
+        findPeerAgents();
+    }
 
-        public GearSyncConnection() {
-            super(GearSyncConnection.class.getName());
-        }
-
-        @Override
-        public void onError(int channelId, String errorString, int error) {
-            Log.e(TAG, "Connection is not alive ERROR: " + errorString + "  "
-                    + error);
-        }
-
-        public void sendMessageToWatch(String msg) {
-            Log.d(TAG, "In sendMsgToWatch");
-            final String message = msg;
-            final GearSyncConnection uHandler = mConnectionsMap.get(Integer.parseInt(String.valueOf(mConnectionId)));
-            if (uHandler == null) {
-                Log.e(TAG,
-                        "Error, can not get GearSyncConnection handler");
-                return;
+    public boolean sendDataToGear(final String data) {
+        boolean retvalue = false;
+        if (mConnectionHandler != null) {
+            try {
+                mConnectionHandler.send(GEAR_ACCESSORY_CHANNEL_ID, data.getBytes());
+                retvalue = true;
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        uHandler.send(GEARACCESSORY_CHANNEL_ID,
-                                message.getBytes());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
+            Log.d(TAG, "Sent: " + data);
         }
+        return retvalue;
+    }
 
-        @Override
-        public void onReceive(int channelId, byte[] data) {
-            Log.d(TAG, "onReceive");
-        }
-
-        @Override
-        protected void onServiceConnectionLost(int errorCode) {
-            Log.e(TAG, "onServiceConectionLost  for peer = " + mConnectionId
-                    + "error code =" + errorCode);
-
-            if (mConnectionsMap != null) {
-                mConnectionsMap.remove(mConnectionId);
-            }
+    public boolean closeConnection() {
+        if (mConnectionHandler != null) {
+            mConnectionHandler.close();
+            mConnectionHandler = null;
+            return true;
+        } else {
+            return false;
         }
     }
 
-
-    @Override
-    public void onCreate() {
-
-        super.onCreate();
-
-        Log.i(TAG, "onCreate of smart view Provider Service");
-
-        SA mAccessory = new SA();
-        try {
-            mAccessory.initialize(this);
-        } catch (SsdkUnsupportedException e) {
-            // Error Handling
-        } catch (Exception e1) {
-            Log.e(TAG, "Cannot initialize Accessory package.");
-            e1.printStackTrace();
+    private boolean processUnsupportedException(SsdkUnsupportedException e) {
+        e.printStackTrace();
+        int errType = e.getType();
+        if (errType == SsdkUnsupportedException.VENDOR_NOT_SUPPORTED
+                || errType == SsdkUnsupportedException.DEVICE_NOT_SUPPORTED) {
             /*
-			 * Your application can not use Accessory package of Samsung Mobile
-			 * SDK. You application should work smoothly without using this SDK,
-			 * or you may want to notify user and close your app gracefully
-			 * (release resources, stop Service threads, close UI thread, etc.)
-			 */
+             * Your application can not use Samsung Accessory SDK. You application should work smoothly
+             * without using this SDK, or you may want to notify user and close your app gracefully (release
+             * resources, stop Service threads, close UI thread, etc.)
+             */
             stopSelf();
+        } else if (errType == SsdkUnsupportedException.LIBRARY_NOT_INSTALLED) {
+            Log.e(TAG, "You need to install Samsung Accessory SDK to use this application.");
+        } else if (errType == SsdkUnsupportedException.LIBRARY_UPDATE_IS_REQUIRED) {
+            Log.e(TAG, "You need to update Samsung Accessory SDK to use this application.");
+        } else if (errType == SsdkUnsupportedException.LIBRARY_UPDATE_IS_RECOMMENDED) {
+            Log.e(TAG, "We recommend that you update your Samsung Accessory SDK before using this application.");
+            return false;
         }
-        init();
+        return true;
     }
 
     private void init() {
         Log.i(TAG, "Initialising...");
-        Log.i(TAG, "configuring GearDataReceiver");
+        Log.i(TAG, "configuring GearDataProvider");
         sendData();
-    }
-
-    @Override
-    protected void onServiceConnectionRequested(SAPeerAgent peerAgent) {
-        acceptServiceConnectionRequest(peerAgent);
-    }
-
-    @Override
-    protected void onFindPeerAgentResponse(SAPeerAgent arg0, int arg1) {
-        // TODO Auto-generated method stub
-        Log.d(TAG, "onFindPeerAgentResponse  arg1 =" + arg1);
-    }
-
-    @Override
-    protected void onServiceConnectionResponse(SASocket thisConnection, int result) {
-        Log.d(TAG, "In onServiceConnectionResponse");
-        if (result == CONNECTION_SUCCESS) {
-            if (thisConnection != null) {
-                GearSyncConnection myConnection = (GearSyncConnection) thisConnection;
-
-                if (mConnectionsMap == null) {
-                    mConnectionsMap = new HashMap<Integer, GearSyncConnection>();
-                }
-
-                myConnection.mConnectionId = (int) (System.currentTimeMillis() & 255);
-
-                Log.d(TAG, "onServiceConnection connectionID = "
-                        + myConnection.mConnectionId);
-
-                mConnectionsMap.put(myConnection.mConnectionId, myConnection);
-
-                // Toast.makeText(getBaseContext(),
-                // R.string.ConnectionEstablishedMsg, Toast.LENGTH_LONG)
-                // .show();
-            } else {
-                Log.e(TAG, "SASocket object is null");
-            }
-        } else if (result == CONNECTION_ALREADY_EXIST) {
-            Log.e(TAG, "onServiceConnectionResponse, CONNECTION_ALREADY_EXIST");
-        } else {
-            Log.e(TAG, "onServiceConnectionResponse result error =" + result);
-        }
     }
 
     public void sendData(){
         mBgReading = BgReading.last();
-        if (mConnectionsMap != null) {
-            if (mBgReading != null) {
-                for (GearSyncConnection connection : mConnectionsMap.values()) {
-                    //connection.sendMessageToWatch("msg");
-                    connection.sendMessageToWatch(bgReading());
-                }
-            }
+        if (mBgReading != null) {
+            sendDataToGear(bgReading());
         }
     }
 
@@ -208,10 +253,5 @@ public class GearSync extends SAAgent {
         int scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
         if(level == -1 || scale == -1) { return 50; }
         return (int)(((float)level / (float)scale) * 100.0f);
-    }
-
-    @Override
-    public IBinder onBind(Intent arg0) {
-        return mBinder;
     }
 }
