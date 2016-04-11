@@ -99,6 +99,7 @@ public class GearSync extends SAAgent {
         }
     }
 
+
     @Override
     public void onCreate() {
 
@@ -122,7 +123,13 @@ public class GearSync extends SAAgent {
 			 */
             stopSelf();
         }
+        init();
+    }
 
+    private void init() {
+        Log.i(TAG, "Initialising...");
+        Log.i(TAG, "configuring PebbleDataReceiver");
+        sendData();
     }
 
     @Override
