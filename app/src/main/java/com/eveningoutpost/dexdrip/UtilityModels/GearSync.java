@@ -25,6 +25,7 @@ import com.samsung.android.sdk.accessory.SA;
 import com.samsung.android.sdk.accessory.SAAgent;
 import com.samsung.android.sdk.accessory.SAPeerAgent;
 import com.samsung.android.sdk.accessory.SASocket;
+import org.json.JSONObject;
 
 /**
  * Created by Simon on 06.04.2016.
@@ -39,7 +40,7 @@ public class GearSync extends SAAgent {
     private static final Class<GearSyncConnection> SASOCKET_CLASS = GearSyncConnection.class;
     private final IBinder mBinder = new LocalBinder();
     private Context mContext;
-    private GearSyncConnection mConnectionHandler = null;
+    private static GearSyncConnection mConnectionHandler;
     //Handler mHandler = new Handler();
 
     public GearSync() {
@@ -52,27 +53,22 @@ public class GearSync extends SAAgent {
         mContext = getApplicationContext();
         bgGraphBuilder = new BgGraphBuilder(mContext);
         mBgReading = BgReading.last();
-        SA mAccessory = new SA();
-        try {
-            mAccessory.initialize(this);
-            findPeers();
-        } catch (SsdkUnsupportedException e) {
-            // try to handle SsdkUnsupportedException
-            if (processUnsupportedException(e) == true) {
-                return;
-            }
-        } catch (Exception e1) {
-            e1.printStackTrace();
-            /*
-             * Your application can not use Samsung Accessory SDK. Your application should work smoothly
-             * without using this SDK, or you may want to notify user and close your application gracefully
-             * (release resources, stop Service threads, close UI thread, etc.)
-             */
-            stopSelf();
-        }
         init();
+        sendRecentBGValue();
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if(!PreferenceManager.getDefaultSharedPreferences(mContext).getBoolean("gear_sync", false)) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if(mConnectionHandler == null) {
+            init();
+        }
+        sendRecentBGValue();
+        return START_STICKY;
+    }
 
 
     @Override
@@ -106,6 +102,7 @@ public class GearSync extends SAAgent {
         if (result == SAAgent.CONNECTION_SUCCESS) {
             Log.i(TAG, "CONNECTION_SUCCESS");
             this.mConnectionHandler = (GearSyncConnection) socket;
+            sendRecentBGValue();
         } else if (result == SAAgent.CONNECTION_ALREADY_EXIST) {
             Log.d(TAG, "CONNECTION_ALREADY_EXIST");
         } else if (result == SAAgent.CONNECTION_DUPLICATE_REQUEST) {
@@ -152,7 +149,19 @@ public class GearSync extends SAAgent {
         @Override
         public void onReceive(int channelId, byte[] data) {
             final String message = new String(data);
-            Log.d(TAG, "Received: " + message);
+            Log.d(TAG, "received: " + message);
+            try {
+                JSONObject rcvJSON = new JSONObject(message);
+                String messageType = rcvJSON.getString("msgType");
+                switch(messageType) {
+                    case "Request":
+                        Log.d(TAG, "received request from watch...");
+                        break;
+                }
+            } catch(Exception e) {
+                Log.e(TAG, "unable to get JSON from string");
+            }
+
         }
 
         @Override
@@ -169,19 +178,23 @@ public class GearSync extends SAAgent {
     }
 
     public void findPeers() {
+        Log.i(TAG, "finding peers...");
         findPeerAgents();
     }
 
     public boolean sendDataToGear(final String data) {
         boolean retvalue = false;
+        Log.d(TAG, "checking whether connection exists...");
         if (mConnectionHandler != null) {
+            Log.d(TAG, "trying sending to watch...");
             try {
                 mConnectionHandler.send(GEAR_ACCESSORY_CHANNEL_ID, data.getBytes());
                 retvalue = true;
+                Log.d(TAG, "sent: " + data);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            Log.d(TAG, "Sent: " + data);
+
         }
         return retvalue;
     }
@@ -219,15 +232,50 @@ public class GearSync extends SAAgent {
     }
 
     private void init() {
-        Log.i(TAG, "Initialising...");
+        Log.i(TAG, "initialising...");
         Log.i(TAG, "configuring GearDataProvider");
-        sendData();
+        SA mAccessory = new SA();
+        try {
+            Log.i(TAG, "STARTING SERVICE");
+            mAccessory.initialize(this);
+            findPeers();
+        } catch (SsdkUnsupportedException e) {
+            // try to handle SsdkUnsupportedException
+            if (processUnsupportedException(e) == true) {
+                return;
+            }
+        } catch (Exception e1) {
+            e1.printStackTrace();
+            /*
+             * Your application can not use Samsung Accessory SDK. Your application should work smoothly
+             * without using this SDK, or you may want to notify user and close your application gracefully
+             * (release resources, stop Service threads, close UI thread, etc.)
+             */
+            stopSelf();
+        }
     }
 
-    public void sendData(){
+    public void sendData(final String data) {
+        sendDataToGear(data);
+    }
+
+    public void sendRecentBGValue(){
+        TimeZone tz = TimeZone.getDefault();
+        Date now = new Date();
+        int offsetFromUTC = tz.getOffset(now.getTime());
         mBgReading = BgReading.last();
         if (mBgReading != null) {
-            sendDataToGear(bgReading());
+            try {
+                JSONObject data = new JSONObject();
+                data.put("msgType", "BGValue");
+                data.put("value", bgReading());
+                data.put("bgUnit", bgGraphBuilder.unit());
+                data.put("timestamp", (mBgReading.timestamp / 1000));
+
+                sendDataToGear(data.toString());
+            } catch(Exception e) {
+                Log.e(TAG, "unable to create JSON string");
+            }
         }
     }
 

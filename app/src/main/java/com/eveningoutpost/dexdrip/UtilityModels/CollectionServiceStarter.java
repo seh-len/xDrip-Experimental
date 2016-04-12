@@ -188,6 +188,9 @@ public class CollectionServiceStarter {
         if(prefs.getBoolean("broadcast_to_pebble", false)){
             startPebbleSyncService();
         }
+        if(prefs.getBoolean("gear_sync", false)){
+            startGearSyncService();
+        }
         startSyncService();
         startDailyIntentService();
         Log.d(TAG, collection_method);
@@ -263,6 +266,10 @@ public class CollectionServiceStarter {
     private void startPebbleSyncService() {
         Log.d(TAG, "starting PebbleSync service");
         mContext.startService(new Intent(mContext, PebbleSync.class));
+    }
+    private void startGearSyncService() {
+        Log.d(TAG, "starting GearSync service");
+        mContext.startService(new Intent(mContext, GearSync.class));
     }
     private void startSyncService() {
         Log.d(TAG, "starting Sync service");
